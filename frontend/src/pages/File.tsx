@@ -1,47 +1,34 @@
-import { Upload, X, FileIcon } from "lucide-react"
+import { Upload } from "lucide-react"
 
 function FileInput() {
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50">
-      <div className="bg-white shadow-md rounded-xl w-full max-w-md overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm w-full max-w-md">
 
-        {/* Form */}
-        <form className="p-6 space-y-4">
+        {/* Upload Section */}
+        <form className="p-6 space-y-6">
           {/* Drag and Drop Box */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-            <input type="file" id="file-upload" className="hidden" />
-            <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
-              <Upload className="w-10 h-10 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium">Click to upload or drag and drop</p>
-                <p className="text-xs text-gray-500">Any file type supported</p>
-              </div>
-            </label>
-          </div>
-
-          {/* Selected File Display (placeholder UI) */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <FileIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">example_file.txt</p>
-              <p className="text-xs text-gray-500">1.2 MB</p>
-            </div>
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center bg-neutral-50 hover:bg-neutral-100 transition">
+            <Upload className="w-10 h-10 text-gray-500 mb-3" />
+            <p className="text-gray-700 font-medium text-lg">Drag and drop your file here</p>
+            <p className="text-gray-400 text-sm">or</p>
             <button
               type="button"
-              className="p-1 rounded hover:bg-gray-200 transition"
+              className="mt-3 border-2 border-gray-300 px-6 py-2 rounded-lg text-gray-700 hover:bg-neutral-100 transition"
             >
-              <X className="w-4 h-4" />
+              Browse Files
             </button>
           </div>
 
-          {/* Upload Button */}
-          <button
-            type="submit"
-            className="w-full py-2 px-4 rounded-lg text-white font-medium bg-gray-400 transition"
-          >
-            Upload File
-          </button>
+          {/* Submit Button */}
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              className="border-2 border-gray-300 w-80 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
+            >
+              Upload
+            </button>
+          </div>
         </form>
       </div>
     </div>
