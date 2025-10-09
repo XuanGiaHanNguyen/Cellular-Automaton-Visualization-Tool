@@ -1,10 +1,60 @@
 import { Upload } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import type {ChangeEvent, DragEvent} from "react"
 
 function FileInput() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string |null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = useRef(0)
+
+  useEffect(() => {
+    const handleDragEnter = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+      dragCounter.current++
+      if (e.dataTransfer?.types.includes('Files')) {
+        setIsDragging(true)
+      }
+    }
+    
+    const handleDragLeave = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+      dragCounter.current--
+      if (dragCounter.current === 0) {
+        setIsDragging(false)
+      }
+    }
+    
+    const handleDragOver = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+    }
+    
+    const handleDropAnywhere = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+      dragCounter.current = 0
+      setIsDragging(false)
+      
+      const droppedFile = e.dataTransfer?.files?.[0]
+      if (droppedFile && droppedFile.type.startsWith("image/")) {
+        setFile(droppedFile)
+        setPreview(URL.createObjectURL(droppedFile))
+      } else if (droppedFile) {
+        alert("Please drop a valid image file")
+      }
+    }
+
+    window.addEventListener("dragenter", handleDragEnter)
+    window.addEventListener("dragleave", handleDragLeave)
+    window.addEventListener("dragover", handleDragOver)
+    window.addEventListener("drop", handleDropAnywhere)
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter)
+      window.removeEventListener("dragleave", handleDragLeave)
+      window.removeEventListener("dragover", handleDragOver)
+      window.removeEventListener("drop", handleDropAnywhere)
+    }
+  }, [])
 
   const HandleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -16,31 +66,22 @@ function FileInput() {
     }
   }
 
-  // Handle drag and drop
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    const droppedFile = e.dataTransfer.files?.[0]
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
-      setFile(droppedFile)
-      setPreview(URL.createObjectURL(droppedFile))
-    } else {
-      alert("Please drop a valid image file")
-    }
+    e.stopPropagation()
   }
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    e.stopPropagation()
   }
 
-  // Handle form submit (you can send file to backend here)
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = () => {
     if (!file) {
       alert("Please upload an image first.")
       return
     }
 
-    // Example: send to backend using FormData
     const formData = new FormData()
     formData.append("image", file)
 
@@ -49,11 +90,22 @@ function FileInput() {
   }
 
   return (
+  <>
+    <div
+      className={`fixed inset-0 flex items-center justify-center bg-gray-700/60 z-50 transition-opacity duration-200 pointer-events-none ${
+        isDragging ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <p className="text-white text-6xl font-black font-semibold px-6 py-3">
+        Drop image anywhere
+      </p>
+    </div>
+
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm w-full max-w-md">
 
         {/* Upload Section */}
-        <form className="p-6 space-y-6" onSubmit={handleSubmit}>
+        <div className="p-6 space-y-6">
           {/* Drag and Drop Box */}
           <div 
             className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center bg-neutral-50 hover:bg-neutral-100 transition"
@@ -64,7 +116,7 @@ function FileInput() {
               <img
                 src={preview}
                 alt="Preview"
-                className="max-h-60 rounded-lg object-contain"
+                className="max-h-80 rounded-lg object-contain"
               />
             ) : (
               <>
@@ -87,17 +139,39 @@ function FileInput() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              className="border-2 border-gray-300 w-80 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
+          <div className="flex justify-center flex-col gap-2">
+            
+            {preview ? (
+              <>
+              <button
+              type="button"
+              onClick={()=> {setPreview(null); setFile(null)}}
+              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
+            >
+              Pick another image
+            </button>
+              <button
+              type="button"
+              onClick={handleSubmit}
+              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
             >
               Upload
             </button>
+              </>
+            ) : (
+              <button
+              type="button"
+              onClick={handleSubmit}
+              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
+            >
+              Upload
+            </button>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
+  </>
   )
 }
 
