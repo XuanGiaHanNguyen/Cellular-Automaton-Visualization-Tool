@@ -1,11 +1,14 @@
-import { Upload } from "lucide-react"
+import { Upload, Loader2 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import type {ChangeEvent, DragEvent} from "react"
 
 function FileInput() {
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string |null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const dragCounter = useRef(0)
 
   useEffect(() => {
@@ -38,6 +41,8 @@ function FileInput() {
       if (droppedFile && droppedFile.type.startsWith("image/")) {
         setFile(droppedFile)
         setPreview(URL.createObjectURL(droppedFile))
+        setProcessedImage(null)
+        setError(null)
       } else if (droppedFile) {
         alert("Please drop a valid image file")
       }
@@ -61,6 +66,8 @@ function FileInput() {
     if (selectedFile && selectedFile.type.startsWith("image/")) {
       setFile(selectedFile)
       setPreview(URL.createObjectURL(selectedFile))
+      setProcessedImage(null)
+      setError(null)
     } else {
       alert("Please select a valid image file (png, jpg, jpeg, etc.)")
     }
@@ -76,17 +83,58 @@ function FileInput() {
     e.stopPropagation()
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!file) {
       alert("Please upload an image first.")
       return
     }
 
+    setIsLoading(true)
+    setError(null)
+
     const formData = new FormData()
     formData.append("image", file)
 
-    console.log("Uploading:", file.name)
-    // fetch("/upload", { method: "POST", body: formData }) ...
+    try {
+      // Call the Spring Boot backend API
+      const response = await fetch("http://localhost:8080/pixelate", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
+      // Convert the response to a blob and create an object URL
+      const blob = await response.blob()
+      const imageUrl = URL.createObjectURL(blob)
+      setProcessedImage(imageUrl)
+      
+    } catch (err) {
+      console.error("Upload error:", err)
+      setError(err instanceof Error ? err.message : "Failed to process image")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleReset = () => {
+    setPreview(null)
+    setFile(null)
+    setProcessedImage(null)
+    setError(null)
+  }
+
+  const handleDownload = () => {
+    if (processedImage) {
+      const link = document.createElement('a')
+      link.href = processedImage
+      link.download = `pixelated-${file?.name || 'image.png'}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
   }
 
   return (
@@ -101,8 +149,8 @@ function FileInput() {
       </p>
     </div>
 
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm w-full max-w-2xl">
 
         {/* Upload Section */}
         <div className="p-6 space-y-6">
@@ -112,7 +160,28 @@ function FileInput() {
             onDrop={handleDrop}
             onDragOver={handleDragOver}
           >
-            {preview ? (
+            {processedImage ? (
+              <div className="w-full space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-600 text-center">Original</p>
+                    <img
+                      src={preview!}
+                      alt="Original"
+                      className="max-h-64 w-full rounded-lg object-contain border border-gray-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-600 text-center">Pixelated</p>
+                    <img
+                      src={processedImage}
+                      alt="Processed"
+                      className="max-h-64 w-full rounded-lg object-contain border border-gray-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : preview ? (
               <img
                 src={preview}
                 alt="Preview"
@@ -138,34 +207,67 @@ function FileInput() {
             )}
           </div>
 
-          {/* Submit Button */}
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
           <div className="flex justify-center flex-col gap-2">
-            
-            {preview ? (
+            {processedImage ? (
               <>
-              <button
-              type="button"
-              onClick={()=> {setPreview(null); setFile(null)}}
-              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
-            >
-              Pick another image
-            </button>
-              <button
-              type="button"
-              onClick={handleSubmit}
-              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
-            >
-              Upload
-            </button>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="bg-blue-600 text-white text-lg py-2 rounded-lg w-full hover:bg-blue-700 transition font-medium"
+                >
+                  Download Pixelated Image
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
+                >
+                  Process Another Image
+                </button>
+              </>
+            ) : preview ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="bg-blue-600 text-white text-lg py-2 rounded-lg w-full hover:bg-blue-700 transition font-medium disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Pixelate Image"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isLoading}
+                  className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Pick Another Image
+                </button>
               </>
             ) : (
               <button
-              type="button"
-              onClick={handleSubmit}
-              className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-700 hover:bg-neutral-100 transition"
-            >
-              Upload
-            </button>
+                type="button"
+                onClick={handleSubmit}
+                disabled
+                className="border-2 border-gray-300 text-lg py-2 rounded-lg w-full text-gray-400 cursor-not-allowed"
+              >
+                Upload
+              </button>
             )}
           </div>
         </div>

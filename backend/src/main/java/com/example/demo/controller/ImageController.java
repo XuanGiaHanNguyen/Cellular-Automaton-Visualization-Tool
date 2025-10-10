@@ -10,7 +10,7 @@ import javax.imageio.ImageIO;
 
 @RestController 
 @RequestMapping("/")
-@CrossOrigin(origins = "http:// localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173")  // REMOVED THE SPACE!
 public class ImageController {
     @PostMapping("/pixelate")
     public ResponseEntity<byte[]> pixelateImage(@RequestParam("image") MultipartFile imageFile) {
@@ -19,7 +19,7 @@ public class ImageController {
             BufferedImage original = ImageIO.read(imageFile.getInputStream());
 
             // Pixelate (downscale +upscale)
-            int pixelSize = 10; // adjust for more/less pixelation
+            int pixelSize = 50;
             int width = original.getWidth();
             int height = original.getHeight();
 
@@ -38,16 +38,12 @@ public class ImageController {
             gFinal.drawImage(finalImg, 0, 0, null);
             gFinal.dispose();
 
-            // Step 3: Convert to grayscale (black and white)
+            // Step 3: Convert to grayscale
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     Color c = new Color(output.getRGB(x, y));
-
-                    // Compute average intensity
                     int gray = (int) (0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue());
-
-                    // Make it pure black or white (optional threshold)
-                    // gray = gray < 128 ? 0 : 255;  // uncomment for strict black & white
+                    gray = gray < 128 ? 0 : 255;
                     Color newColor = new Color(gray, gray, gray);
                     output.setRGB(x, y, newColor.getRGB());
                 }
@@ -61,11 +57,9 @@ public class ImageController {
                     .contentType(MediaType.IMAGE_PNG)
                     .body(baos.toByteArray());
 
-
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
-
 }
