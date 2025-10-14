@@ -1,4 +1,4 @@
-export const GRID_SIZE = 100 
+export const GRID_SIZE = 60
 export const FPS = 10  // Animation speed (frame per second)
 export const BRIGHTNESS_THRESHOLD = 128
 export const RANDOM_PROBABILITY = 0.3

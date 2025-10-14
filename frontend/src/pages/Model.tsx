@@ -1,70 +1,45 @@
 import { useState, useRef, useEffect } from "react"
 import { Upload, Loader2 } from "lucide-react"
+import type { Grid } from "../types/grid"
+import { createEmptyGrid, createRandomGrid, toggleCell } from '../utils/gridUtils'
+import { getNextGeneration } from '../logic/gameOfLife'
+import { drawGrid } from '../rendering/canvasRenderer'
+import { imageToGrid } from '../services/imageProcessor'
+import { uploadImageForPixelation } from '../services/api'
+import { GRID_SIZE, FPS } from '../constants/config'
+
 
 function Model() {
-  const [grid, setGrid] = useState<boolean[][]>(() => 
-    Array(100).fill(null).map(() => Array(100).fill(false))
-  )
+  const [grid, setGrid] = useState<Grid>(createEmptyGrid)
   const [isRunning, setIsRunning] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const animationRef = useRef<number>(null)
-  
-  const GRID_SIZE = 100
-  const CELL_SIZE = 10
+  const [error, setError] = useState< string | null >(null)
 
-  // Draw grid on canvas
+  // ========== REFS ==========
+  const canvasRef = useRef<HTMLCanvasElement>(null)           // Canvas element
+  const fileInputRef = useRef<HTMLInputElement>(null)         // Hidden file input
+  const animationRef = useRef<number | null>(null)            // Animation frame ID
+
+  // ========== EFFECT: Redraw canvas when grid changes ==========
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Clear canvas
-    ctx.fillStyle = '#fafafa'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Draw grid
-    grid.forEach((row, i) => {
-      row.forEach((cell, j) => {
-        ctx.fillStyle = cell ? '#000000' : '#ffffff'
-        ctx.fillRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-        
-        // Grid lines
-        ctx.strokeStyle = '#e5e5e5'
-        ctx.strokeRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-      })
-    })
+    drawGrid(canvas, grid)
   }, [grid])
 
-  // Conway's Game of Life rules
-  const getNextGeneration = (currentGrid: boolean[][]) => {
-    const newGrid = currentGrid.map((row, i) => 
-      row.map((cell, j) => {
-        let neighbors = 0
-        for (let di = -1; di <= 1; di++) {
-          for (let dj = -1; dj <= 1; dj++) {
-            if (di === 0 && dj === 0) continue
-            const ni = (i + di + GRID_SIZE) % GRID_SIZE
-            const nj = (j + dj + GRID_SIZE) % GRID_SIZE
-            if (currentGrid[ni][nj]) neighbors++
-          }
-        }
-        
-        if (cell) {
-          return neighbors === 2 || neighbors === 3
-        } else {
-          return neighbors === 3
-        }
-      })
-    )
-    return newGrid
-  }
+  // ========== EFFECT: Handle window resize ==========
+  useEffect(() => {
+    const handleResize = () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      drawGrid(canvas, grid)
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [grid])
 
-  // Animation loop
+  // ========== EFFECT: Animation loop for simulation ==========
   useEffect(() => {
     if (!isRunning) {
       if (animationRef.current) {
@@ -74,10 +49,10 @@ function Model() {
     }
 
     let lastTime = 0
-    const fps = 10
 
     const animate = (currentTime: number) => {
-      if (currentTime - lastTime >= 1000 / fps) {
+      // Update at specified FPS rate
+      if (currentTime - lastTime >= 1000 / FPS) {
         setGrid(prevGrid => getNextGeneration(prevGrid))
         lastTime = currentTime
       }
@@ -86,6 +61,7 @@ function Model() {
 
     animationRef.current = requestAnimationFrame(animate)
 
+    // Cleanup when stopping or unmounting
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
@@ -93,7 +69,9 @@ function Model() {
     }
   }, [isRunning])
 
+  // ========== HANDLER: Process uploaded image file ==========
   const handleFileUpload = async (file: File) => {
+    // Validate file type
     if (!file || !file.type.startsWith("image/")) {
       setError("Please select a valid image file")
       return
@@ -102,57 +80,19 @@ function Model() {
     setIsLoading(true)
     setError(null)
 
-    const formData = new FormData()
-    formData.append("image", file)
-
     try {
-      const response = await fetch("http://localhost:8080/pixelate", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`)
-      }
-
-      const blob = await response.blob()
+      // Send to backend for pixelation
+      const blob = await uploadImageForPixelation(file)
       const imageUrl = URL.createObjectURL(blob)
 
-      // Load the pixelated image and convert to grid
+      // Load pixelated image
       const img = new Image()
       img.onload = () => {
-        const tempCanvas = document.createElement('canvas')
-        tempCanvas.width = GRID_SIZE
-        tempCanvas.height = GRID_SIZE
-        const tempCtx = tempCanvas.getContext('2d')
+        // Convert to grid and update state
+        const newGrid = imageToGrid(img)
+        setGrid(newGrid)
         
-        if (tempCtx) {
-          // Draw image scaled to grid size
-          tempCtx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE)
-          const imageData = tempCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE)
-          
-          // Convert to boolean grid (black = alive, white = dead)
-          const newGrid = Array(GRID_SIZE).fill(null).map(() => 
-            Array(GRID_SIZE).fill(false)
-          )
-          
-          for (let i = 0; i < GRID_SIZE; i++) {
-            for (let j = 0; j < GRID_SIZE; j++) {
-              const index = (i * GRID_SIZE + j) * 4
-              const r = imageData.data[index]
-              const g = imageData.data[index + 1]
-              const b = imageData.data[index + 2]
-              const brightness = (r + g + b) / 3
-              
-              // Black pixels (low brightness) = alive cells
-              newGrid[i][j] = brightness < 128
-            }
-          }
-          
-          setGrid(newGrid)
-        }
-        
-        // Clean up the blob URL
+        // Clean up temporary URL
         URL.revokeObjectURL(imageUrl)
       }
       img.src = imageUrl
@@ -165,6 +105,7 @@ function Model() {
     }
   }
 
+  // ========== HANDLER: File input change ==========
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -172,75 +113,75 @@ function Model() {
     }
   }
 
+  // ========== HANDLER: Start simulation ==========
   const handleStart = () => {
     setIsRunning(true)
   }
 
+  // ========== HANDLER: Stop simulation ==========
   const handleStop = () => {
     setIsRunning(false)
   }
 
+  // ========== HANDLER: Clear all cells ==========
   const handleClearPatterns = () => {
-    const emptyGrid = Array(GRID_SIZE).fill(null).map(() => 
-      Array(GRID_SIZE).fill(false)
-    )
-    setGrid(emptyGrid)
+    setGrid(createEmptyGrid())
     setIsRunning(false)
   }
 
+  // ========== HANDLER: Generate random pattern ==========
   const handleResetGrid = () => {
-    const randomGrid = Array(GRID_SIZE).fill(null).map(() => 
-      Array(GRID_SIZE).fill(null).map(() => Math.random() > 0.7)
-    )
-    setGrid(randomGrid)
+    setGrid(createRandomGrid())
     setIsRunning(false)
   }
 
+  // ========== HANDLER: Toggle cell on canvas click ==========
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isRunning) return
+    if (isRunning) return  // Prevent editing during simulation
     
     const canvas = canvasRef.current
     if (!canvas) return
     
-    const rect = canvas.getBoundingClientRect()
-    const x = Math.floor((e.clientX - rect.left) / CELL_SIZE)
-    const y = Math.floor((e.clientY - rect.top) / CELL_SIZE)
+    // Get cell size from canvas
+    const cellSize = (canvas as any).cellSize || 10
     
+    // Calculate clicked cell coordinates
+    const rect = canvas.getBoundingClientRect()
+    const x = Math.floor((e.clientX - rect.left) / cellSize)
+    const y = Math.floor((e.clientY - rect.top) / cellSize)
+    
+    // Toggle cell if within grid bounds
     if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-      const newGrid = grid.map((row, i) => 
-        row.map((cell, j) => (i === y && j === x) ? !cell : cell)
-      )
-      setGrid(newGrid)
+      setGrid(prevGrid => toggleCell(prevGrid, y, x))
     }
   }
 
   return (
-    <div className="flex flex-row">
-      {/* Left Visualization Area */}
-      <div className="flex-[2.5] h-screen bg-neutral-50 border-r border-gray-200 flex items-center justify-center">
+    <div className="flex flex-row h-screen">
+      {/* LEFT PANEL: Canvas Visualization */}
+      <div className="flex-[2.5] bg-neutral-50 flex items-center justify-center">
         <canvas
           ref={canvasRef}
-          width={GRID_SIZE * CELL_SIZE}
-          height={GRID_SIZE * CELL_SIZE}
-          className="border border-gray-300 shadow-lg cursor-pointer"
+          className="border border-gray-300 shadow-lg cursor-pointer max-w-full max-h-full"
           onClick={handleCanvasClick}
         />
       </div>
 
-      {/* Right Control Panel */}
-      <div className="flex-1 h-screen bg-white border-l border-gray-200 overflow-y-auto">
+      {/* RIGHT PANEL: Control Interface */}
+      <div className="flex-1 bg-white border-l border-gray-200 overflow-y-auto">
+        {/* Title */}
         <h1 className="text-3xl font-black text-center mx-10 py-8 pt-13 text-gray-800 border-gray-200">
           Cellular Automaton Visualizer
         </h1>
 
-        {/* Error Message */}
+        {/* Error Display */}
         {error && (
           <div className="mx-7 mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
 
-        {/* Upload Section */}
+        {/* Image Upload Button */}
         <div className="flex flex-col items-center pb-4">
           <input
             ref={fileInputRef}
@@ -268,7 +209,7 @@ function Model() {
           </button>
         </div>
 
-        {/* Start / Stop Controls */}
+        {/* Start/Stop Controls */}
         <div className="flex justify-center gap-4 px-7 pb-4">
           <button
             onClick={handleStart}
@@ -303,7 +244,7 @@ function Model() {
         </div>
 
         {/* Instructions */}
-        <div className="mx-7 mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mx-7 mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
           <h3 className="font-semibold text-gray-800 mb-2">How to use:</h3>
           <ul className="text-sm text-gray-700 space-y-1">
             <li>• Upload an image to convert it to a cellular automaton</li>
@@ -315,6 +256,7 @@ function Model() {
       </div>
     </div>
   )
+
 }
 
 export default Model

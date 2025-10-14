@@ -1,5 +1,5 @@
-import { Grid } from "../src/types/grid"
-import { GRID_SIZE } from "../src/constants/config"
+import type { Grid } from "../types/grid"
+import { GRID_SIZE } from "../constants/config"
 
 // Counting living neighbors around a cell 
 export const countNeighbors = (grid: Grid, row: number, col: number): number => {
