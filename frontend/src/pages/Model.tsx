@@ -15,19 +15,16 @@ function Model() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState< string | null >(null)
 
-  // ========== REFS ==========
   const canvasRef = useRef<HTMLCanvasElement>(null)           // Canvas element
   const fileInputRef = useRef<HTMLInputElement>(null)         // Hidden file input
   const animationRef = useRef<number | null>(null)            // Animation frame ID
 
-  // ========== EFFECT: Redraw canvas when grid changes ==========
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     drawGrid(canvas, grid)
   }, [grid])
 
-  // ========== EFFECT: Handle window resize ==========
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current
@@ -39,7 +36,6 @@ function Model() {
     return () => window.removeEventListener('resize', handleResize)
   }, [grid])
 
-  // ========== EFFECT: Animation loop for simulation ==========
   useEffect(() => {
     if (!isRunning) {
       if (animationRef.current) {
@@ -69,7 +65,6 @@ function Model() {
     }
   }, [isRunning])
 
-  // ========== HANDLER: Process uploaded image file ==========
   const handleFileUpload = async (file: File) => {
     // Validate file type
     if (!file || !file.type.startsWith("image/")) {
@@ -105,7 +100,6 @@ function Model() {
     }
   }
 
-  // ========== HANDLER: File input change ==========
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -113,23 +107,19 @@ function Model() {
     }
   }
 
-  // ========== HANDLER: Start simulation ==========
   const handleStart = () => {
     setIsRunning(true)
   }
 
-  // ========== HANDLER: Stop simulation ==========
   const handleStop = () => {
     setIsRunning(false)
   }
 
-  // ========== HANDLER: Clear all cells ==========
   const handleClearPatterns = () => {
     setGrid(createEmptyGrid())
     setIsRunning(false)
   }
 
-  // ========== HANDLER: Generate random pattern ==========
   const handleResetGrid = () => {
     setGrid(createRandomGrid())
     setIsRunning(false)
@@ -157,7 +147,6 @@ function Model() {
 
   return (
     <div className="flex flex-row h-screen">
-      {/* LEFT PANEL: Canvas Visualization */}
       <div className="flex-[2.5] bg-neutral-50 flex items-center justify-center">
         <canvas
           ref={canvasRef}
@@ -166,9 +155,7 @@ function Model() {
         />
       </div>
 
-      {/* RIGHT PANEL: Control Interface */}
       <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-        {/* Title */}
         <h1 className="text-3xl font-black text-center mx-10 py-8 pt-13 text-gray-800 border-gray-200">
           Cellular Automaton Visualizer
         </h1>
@@ -180,7 +167,6 @@ function Model() {
           </div>
         )}
 
-        {/* Image Upload Button */}
         <div className="flex flex-col items-center pb-4">
           <input
             ref={fileInputRef}
@@ -208,7 +194,6 @@ function Model() {
           </button>
         </div>
 
-        {/* Start/Stop Controls */}
         <div className="flex justify-center gap-4 px-7 pb-4">
           <button
             onClick={handleStart}
@@ -226,7 +211,6 @@ function Model() {
           </button>
         </div>
 
-        {/* Pattern Controls */}
         <div className="flex flex-col gap-4 items-center">
           <button
             onClick={handleClearPatterns}
@@ -242,13 +226,12 @@ function Model() {
           </button>
         </div>
 
-        {/* Instructions */}
         <div className="mx-7 mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
           <h3 className="font-semibold text-gray-800 mb-2">How to use:</h3>
           <ul className="text-sm text-gray-700 space-y-1">
             <li>• Upload an image to convert it to a cellular automaton</li>
             <li>• Click cells to toggle them on/off</li>
-            <li>• Press Start to run Conway's Game of Life</li>
+            <li>• Press Start to run Conway's Game of Life Algorithm</li>
             <li>• Black pixels become alive cells</li>
           </ul>
         </div>
