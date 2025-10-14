@@ -135,20 +135,19 @@ function Model() {
     setIsRunning(false)
   }
 
-  // ========== HANDLER: Toggle cell on canvas click ==========
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isRunning) return  // Prevent editing during simulation
     
     const canvas = canvasRef.current
     if (!canvas) return
     
-    // Get cell size from canvas
-    const cellSize = (canvas as any).cellSize || 10
-    
-    // Calculate clicked cell coordinates
+    // Calculate clicked cell coordinates using canvas dimensions
     const rect = canvas.getBoundingClientRect()
-    const x = Math.floor((e.clientX - rect.left) / cellSize)
-    const y = Math.floor((e.clientY - rect.top) / cellSize)
+    const cellWidth = rect.width / GRID_SIZE
+    const cellHeight = rect.height / GRID_SIZE
+    
+    const x = Math.floor((e.clientX - rect.left) / cellWidth)
+    const y = Math.floor((e.clientY - rect.top) / cellHeight)
     
     // Toggle cell if within grid bounds
     if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
@@ -168,7 +167,7 @@ function Model() {
       </div>
 
       {/* RIGHT PANEL: Control Interface */}
-      <div className="flex-1 bg-white border-l border-gray-200 overflow-y-auto">
+      <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
         {/* Title */}
         <h1 className="text-3xl font-black text-center mx-10 py-8 pt-13 text-gray-800 border-gray-200">
           Cellular Automaton Visualizer
