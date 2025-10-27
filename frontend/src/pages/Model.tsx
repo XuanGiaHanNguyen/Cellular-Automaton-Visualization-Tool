@@ -8,6 +8,7 @@ import { imageToGrid } from '../services/imageProcessor'
 import { uploadImageForPixelation } from '../services/api'
 import { GRID_SIZE, FPS } from '../constants/config'
 
+console.log("🧩 VITE_API_URL at load:", import.meta.env.VITE_API_URL);
 
 function Model() {
   const [grid, setGrid] = useState<Grid>(createEmptyGrid)
@@ -18,6 +19,7 @@ function Model() {
   const canvasRef = useRef<HTMLCanvasElement>(null)           // Canvas element
   const fileInputRef = useRef<HTMLInputElement>(null)         // Hidden file input
   const animationRef = useRef<number | null>(null)            // Animation frame ID
+  
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -66,6 +68,7 @@ function Model() {
   }, [isRunning])
 
   const handleFileUpload = async (file: File) => {
+    
     // Validate file type
     if (!file || !file.type.startsWith("image/")) {
       setError("Please select a valid image file")
@@ -76,6 +79,7 @@ function Model() {
     setError(null)
 
     try {
+      console.log("VITE_API_URL is:", import.meta.env.VITE_API_URL);
       // Send to backend for pixelation
       const blob = await uploadImageForPixelation(file)
       const imageUrl = URL.createObjectURL(blob)
