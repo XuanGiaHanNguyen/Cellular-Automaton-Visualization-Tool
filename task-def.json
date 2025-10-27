@@ -1,0 +1,26 @@
+{
+  "family": "java-backend-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::117459925961:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "java-backend",
+      "image": "117459925961.dkr.ecr.us-east-1.amazonaws.com/java-backend:latest",
+      "essential": true,
+      "portMappings": [
+        { "containerPort": 8080, "protocol": "tcp" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/java-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
